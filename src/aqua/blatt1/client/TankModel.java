@@ -16,7 +16,7 @@ import aqua.blatt1.common.msgtypes.Token;
 
 import javax.swing.*;
 
-public class TankModel extends Observable implements Iterable<FishModel> {
+public class TankModel implements Iterable<FishModel> {
 
 	public static final int WIDTH = 600;
 	public static final int HEIGHT = 350;
@@ -89,60 +89,6 @@ public class TankModel extends Observable implements Iterable<FishModel> {
 				forwarder.sendToken(leftNeighbor, tk);
 			}
 		},2000);
-	}
-
-	public void initiateSnapshot(){
-		state = fishies.size();
-		mode = RecordMode.BOTH;
-		forwarder.sendMarker(leftNeighbor);
-		forwarder.sendMarker(rightNeighbor);
-		while (mode != RecordMode.IDLE);
-		forwarder.sendSToken(leftNeighbor,new SnapshotToken(this.id,this.state));
-	}
-
-	public void receiveMarker(InetSocketAddress sender) {
-		if(mode==RecordMode.IDLE){
-			state = fishies.size();
-			if (sender==leftNeighbor) mode=RecordMode.RIGHT;
-			else if (sender == rightNeighbor) mode = RecordMode.LEFT;
-			else state=-500; //Look for errors
-			forwarder.sendMarker(leftNeighbor);
-			forwarder.sendMarker(rightNeighbor);
-			}
-
-		else {
-			try {
-				mode=(sender.equals(leftNeighbor))?removeLeft():removeRight();
-
-			} catch (Exception e) {
-				e.printStackTrace();
-			}
-		}
-
-	}
-
-
-	public void receiveSToken(SnapshotToken stk){
-		while (mode != RecordMode.IDLE);
-
-		if(!stk.id.equals(this.id)) {
-			stk.value+=state;
-			forwarder.sendSToken(leftNeighbor,stk);
-		}
-		JOptionPane.showMessageDialog(null,stk.value);
-	}
-
-	public RecordMode removeLeft() throws Exception {
-		if(this.mode==RecordMode.BOTH) return RecordMode.RIGHT;
-		if(this.mode==RecordMode.LEFT) return RecordMode.IDLE;
-		if(leftNeighbor.equals(rightNeighbor)) return RecordMode.IDLE;
-		throw  new Exception("MISSING DIRECTION");
-	}
-
-	public RecordMode removeRight() throws Exception {
-		if(this.mode==RecordMode.BOTH) return RecordMode.LEFT;
-		if(this.mode==RecordMode.RIGHT) return RecordMode.IDLE;
-		throw new Exception("MISSING DIRECTION");
 	}
 
 
