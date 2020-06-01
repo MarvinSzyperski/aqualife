@@ -38,6 +38,11 @@ public class ClientCommunicator {
 		public void sendToken(InetSocketAddress receiver, Token tk){
 			endpoint.send(receiver,tk);
 		}
+
+		public void findFish(String fishID, InetSocketAddress receiver) {
+
+			endpoint.send(receiver,new LocationRequest(fishID));
+		}
 	}
 
 	public class ClientReceiver extends Thread {
@@ -63,7 +68,10 @@ public class ClientCommunicator {
 				//	tankModel.receiveNeighbor((NeighborUpdate) msg.getPayload());
 
 				else if(msg.getPayload() instanceof Token)
-					tankModel.receiveToken(((Token) msg.getPayload()));
+					tankModel.receiveToken((Token) msg.getPayload());
+
+				else if(msg.getPayload() instanceof LocationRequest)
+					tankModel.receiveLocationRequest((LocationRequest)msg.getPayload());
 
 			}
 			System.out.println("Receiver stopped.");
