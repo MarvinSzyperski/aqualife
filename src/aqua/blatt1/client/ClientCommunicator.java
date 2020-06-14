@@ -1,6 +1,8 @@
 package aqua.blatt1.client;
 
 import java.net.InetSocketAddress;
+import java.util.Timer;
+import java.util.TimerTask;
 
 import aqua.blatt1.common.msgtypes.*;
 import messaging.Endpoint;
@@ -10,6 +12,7 @@ import aqua.blatt1.common.Properties;
 
 public class ClientCommunicator {
 	private final Endpoint endpoint;
+	private Timer timer;
 
 	public ClientCommunicator() {
 		endpoint = new Endpoint();
@@ -65,8 +68,17 @@ public class ClientCommunicator {
 			while (!isInterrupted()) {
 				Message msg = endpoint.blockingReceive();
 
-				if (msg.getPayload() instanceof RegisterResponse)
+				if (msg.getPayload() instanceof RegisterResponse) {
 					tankModel.onRegistration(((RegisterResponse) msg.getPayload()).getId());
+					timer = new Timer();
+					timer.schedule(new TimerTask() {
+						@Override
+						public void run() {
+							//Reregistering
+						}
+					},0);
+				}
+
 
 				else if (msg.getPayload() instanceof HandoffRequest)
 					tankModel.receiveFish(((HandoffRequest) msg.getPayload()).getFish());

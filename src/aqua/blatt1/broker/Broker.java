@@ -9,6 +9,8 @@ import messaging.Message;
 
 import javax.swing.*;
 import java.net.InetSocketAddress;
+import java.sql.Timestamp;
+import java.util.Calendar;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.locks.ReadWriteLock;
@@ -74,16 +76,23 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 			if(counter==0) endpoint.send(newClient,new Token());
 			counter++;
 
-			collection.add("tank"+(collection.size()+1), newClient);
-			InetSocketAddress leftClient = collection.getLeftNeighborOf(newClient);
-			InetSocketAddress rightClient = collection.getRightNeighborOf(newClient);
-			endpoint.send(newClient, new RegisterResponse("tank"+collection.size()));
-			endpoint.send(newClient,new NeighborUpdate(
-					leftClient,rightClient
-			));
+			if(collection.getClient(collection.indexOf(newClient))!=null){
+				//Refresh timestamp
+			}
+			else {
 
-			endpoint.send(leftClient,new NeighborUpdate(collection.getLeftNeighborOf(leftClient),newClient));
-			endpoint.send(rightClient,new NeighborUpdate(newClient,collection.getRightNeighborOf(newClient)));
+
+				collection.add("tank" + (collection.size() + 1), newClient, new Timestamp(Calendar.getInstance().getTime().getTime()));
+				InetSocketAddress leftClient = collection.getLeftNeighborOf(newClient);
+				InetSocketAddress rightClient = collection.getRightNeighborOf(newClient);
+				endpoint.send(newClient, new RegisterResponse("tank" + collection.size(), 100000));
+				endpoint.send(newClient, new NeighborUpdate(
+						leftClient, rightClient
+				));
+
+				endpoint.send(leftClient, new NeighborUpdate(collection.getLeftNeighborOf(leftClient), newClient));
+				endpoint.send(rightClient, new NeighborUpdate(newClient, collection.getRightNeighborOf(newClient)));
+			}
 			lock.writeLock().unlock();
 		}
 

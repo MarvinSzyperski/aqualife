@@ -1,5 +1,6 @@
 package aqua.blatt1.broker;
 
+import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -12,8 +13,9 @@ public class ClientCollection<T> {
 	private class Client {
 		final String id;
 		final T client;
+		Timestamp timestamp;
 
-		Client(String id, T client) {
+		Client(String id, T client, Timestamp timestamp) {
 			this.id = id;
 			this.client = client;
 		}
@@ -25,8 +27,8 @@ public class ClientCollection<T> {
 		clients = new ArrayList<Client>();
 	}
 
-	public ClientCollection<T> add(String id, T client) {
-		clients.add(new Client(id, client));
+	public ClientCollection<T> add(String id, T client, Timestamp timestamp) {
+		clients.add(new Client(id, client,timestamp));
 		return this;
 	}
 
