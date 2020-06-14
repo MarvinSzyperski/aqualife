@@ -1,5 +1,6 @@
 package aqua.blatt1.broker;
 
+import aqua.blatt1.common.msgtypes.NameResolutionRequest;
 import aqua.blatt1.common.Direction;
 import aqua.blatt1.common.msgtypes.*;
 import aqua.blatt2.broker.PoisonPill;
@@ -52,14 +53,17 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 		public BrokerTask(Message message){
 
-				 if(message.getPayload() instanceof RegisterRequest){
+				if(message.getPayload() instanceof RegisterRequest){
 					register(message);
 				}
-				if(message.getPayload() instanceof DeregisterRequest){
+				else if(message.getPayload() instanceof DeregisterRequest){
 					deregister(message);
 				}
-				if(message.getPayload() instanceof HandoffRequest){
+				else if(message.getPayload() instanceof HandoffRequest){
 					handoffish(message);
+				}
+				else if(message.getPayload() instanceof NameResolutionRequest){
+					respondResolutionRequest(message);
 				}
 
 		}
@@ -70,7 +74,7 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 			if(counter==0) endpoint.send(newClient,new Token());
 			counter++;
 
-			collection.add("tank"+collection.size(), newClient);
+			collection.add("tank"+(collection.size()+1), newClient);
 			InetSocketAddress leftClient = collection.getLeftNeighborOf(newClient);
 			InetSocketAddress rightClient = collection.getRightNeighborOf(newClient);
 			endpoint.send(newClient, new RegisterResponse("tank"+collection.size()));
@@ -108,6 +112,13 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 			lock.readLock().unlock();
 		}
 
+		public void respondResolutionRequest(Message message){
+			NameResolutionRequest payload = (NameResolutionRequest) message.getPayload();
+			int index = collection.indexOf(payload.getTankID());
+			InetSocketAddress client = collection.getClient(index);
+			endpoint.send(message.getSender(),new NameResolutionResponse(client,payload.getRequestID()));
+
+		}
 
 
 	}
