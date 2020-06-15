@@ -2,6 +2,7 @@ package aqua.blatt1.broker;
 
 import java.sql.Timestamp;
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.List;
 
 /*
@@ -18,6 +19,11 @@ public class ClientCollection<T> {
 		Client(String id, T client, Timestamp timestamp) {
 			this.id = id;
 			this.client = client;
+			this.timestamp = timestamp;
+		}
+
+		public void setTimestamp(Timestamp timestamp) {
+			this.timestamp = timestamp;
 		}
 	}
 
@@ -52,6 +58,7 @@ public class ClientCollection<T> {
 	}
 
 	public T getClient(int index) {
+		if(index>clients.size() || index<0) return null;
 		return clients.get(index).client;
 	}
 
@@ -73,6 +80,19 @@ public class ClientCollection<T> {
 
 	public T getRightNeighborOf(T t) {
 		return getRightNeighborOf(indexOf(t));
+	}
+
+	public void setTimestamp(int index,Timestamp timestamp){
+		clients.get(index).setTimestamp(timestamp);
+	}
+
+	public void removeOld(){
+		clients.removeIf(client -> {
+			Timestamp cTime = new Timestamp(Calendar.getInstance().getTime().getTime());
+			long timeDifference = cTime.getTime() - client.timestamp.getTime();
+
+			return timeDifference>Broker.LEASE_DURATION;
+		});
 	}
 
 }

@@ -68,17 +68,8 @@ public class ClientCommunicator {
 			while (!isInterrupted()) {
 				Message msg = endpoint.blockingReceive();
 
-				if (msg.getPayload() instanceof RegisterResponse) {
-					tankModel.onRegistration(((RegisterResponse) msg.getPayload()).getId());
-					timer = new Timer();
-					timer.schedule(new TimerTask() {
-						@Override
-						public void run() {
-							//Reregistering
-						}
-					},0);
-				}
-
+				if (msg.getPayload() instanceof RegisterResponse)
+					tankModel.onRegistration(((RegisterResponse) msg.getPayload()).getId(),(((RegisterResponse) msg.getPayload()).getLifetime()));
 
 				else if (msg.getPayload() instanceof HandoffRequest)
 					tankModel.receiveFish(((HandoffRequest) msg.getPayload()).getFish());

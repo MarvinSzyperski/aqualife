@@ -24,6 +24,7 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 	ReadWriteLock lock = new ReentrantReadWriteLock();
 	volatile static Boolean stopRequested = false;
 	public static int counter = 0;
+	public static final int LEASE_DURATION = 10000;
 
 	public static void main(String[] args) {
 		Broker broker = new Broker();
@@ -77,7 +78,7 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 			counter++;
 
 			if(collection.getClient(collection.indexOf(newClient))!=null){
-				//Refresh timestamp
+				collection.setTimestamp(collection.indexOf(newClient),new Timestamp(Calendar.getInstance().getTime().getTime()));
 			}
 			else {
 
@@ -85,7 +86,7 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 				collection.add("tank" + (collection.size() + 1), newClient, new Timestamp(Calendar.getInstance().getTime().getTime()));
 				InetSocketAddress leftClient = collection.getLeftNeighborOf(newClient);
 				InetSocketAddress rightClient = collection.getRightNeighborOf(newClient);
-				endpoint.send(newClient, new RegisterResponse("tank" + collection.size(), 100000));
+				endpoint.send(newClient, new RegisterResponse("tank" + collection.size(), LEASE_DURATION));
 				endpoint.send(newClient, new NeighborUpdate(
 						leftClient, rightClient
 				));
