@@ -1,5 +1,7 @@
 package aqua.blatt1.broker;
 
+import aqua.blatt1.Security.SecureAsymmetricEndpoint;
+import aqua.blatt1.Security.SecureEndpoint;
 import aqua.blatt1.common.msgtypes.NameResolutionRequest;
 import aqua.blatt1.common.Direction;
 import aqua.blatt1.common.msgtypes.*;
@@ -16,7 +18,7 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 	public class Broker {
 
-	Endpoint endpoint = new Endpoint(4711);
+	Endpoint endpoint = new SecureAsymmetricEndpoint(4711);
 	ClientCollection<InetSocketAddress> collection = new ClientCollection();
 	ExecutorService executorService = Executors.newFixedThreadPool(20);
 	ReadWriteLock lock = new ReentrantReadWriteLock();
@@ -41,6 +43,7 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 			Message message = endpoint.blockingReceive();
 			if(message.getPayload() instanceof PoisonPill) break;
+			if(message.getPayload() instanceof DummyMesage) continue;
 			executorService.execute(()-> new BrokerTask(message));
 
 		}
@@ -53,19 +56,18 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 		public BrokerTask(Message message){
 
-				if(message.getPayload() instanceof RegisterRequest){
+			if(message != null) {
+
+				if (message.getPayload() instanceof RegisterRequest) {
 					register(message);
-				}
-				else if(message.getPayload() instanceof DeregisterRequest){
+				} else if (message.getPayload() instanceof DeregisterRequest) {
 					deregister(message);
-				}
-				else if(message.getPayload() instanceof HandoffRequest){
+				} else if (message.getPayload() instanceof HandoffRequest) {
 					handoffish(message);
-				}
-				else if(message.getPayload() instanceof NameResolutionRequest){
+				} else if (message.getPayload() instanceof NameResolutionRequest) {
 					respondResolutionRequest(message);
 				}
-
+			}
 		}
 
 		public void register(Message message){

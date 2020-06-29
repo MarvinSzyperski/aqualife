@@ -2,6 +2,8 @@ package aqua.blatt1.client;
 
 import java.net.InetSocketAddress;
 
+import aqua.blatt1.Security.SecureAsymmetricEndpoint;
+import aqua.blatt1.Security.SecureEndpoint;
 import aqua.blatt1.common.msgtypes.*;
 import messaging.Endpoint;
 import messaging.Message;
@@ -12,7 +14,7 @@ public class ClientCommunicator {
 	private final Endpoint endpoint;
 
 	public ClientCommunicator() {
-		endpoint = new Endpoint();
+		endpoint = new SecureAsymmetricEndpoint();
 	}
 
 	public class ClientForwarder {
@@ -65,29 +67,31 @@ public class ClientCommunicator {
 			while (!isInterrupted()) {
 				Message msg = endpoint.blockingReceive();
 
-				if (msg.getPayload() instanceof RegisterResponse)
-					tankModel.onRegistration(((RegisterResponse) msg.getPayload()).getId());
+				if(msg != null) {
 
-				else if (msg.getPayload() instanceof HandoffRequest)
-					tankModel.receiveFish(((HandoffRequest) msg.getPayload()).getFish());
+					if (msg.getPayload() instanceof RegisterResponse)
+						tankModel.onRegistration(((RegisterResponse) msg.getPayload()).getId());
 
-				else if(msg.getPayload() instanceof NeighborUpdate)
-					tankModel.receiveNeighbor(((NeighborUpdate) msg.getPayload()).getLeft(), ((NeighborUpdate) msg.getPayload()).getRight());
-				//	tankModel.receiveNeighbor((NeighborUpdate) msg.getPayload());
+					else if (msg.getPayload() instanceof HandoffRequest)
+						tankModel.receiveFish(((HandoffRequest) msg.getPayload()).getFish());
 
-				else if(msg.getPayload() instanceof Token)
-					tankModel.receiveToken((Token) msg.getPayload());
+					else if (msg.getPayload() instanceof NeighborUpdate)
+						tankModel.receiveNeighbor(((NeighborUpdate) msg.getPayload()).getLeft(), ((NeighborUpdate) msg.getPayload()).getRight());
+						//	tankModel.receiveNeighbor((NeighborUpdate) msg.getPayload());
 
-				else if(msg.getPayload() instanceof LocationRequest)
-					tankModel.receiveLocationRequest((LocationRequest)msg.getPayload());
+					else if (msg.getPayload() instanceof Token)
+						tankModel.receiveToken((Token) msg.getPayload());
 
-				else if(msg.getPayload() instanceof NameResolutionResponse)
-					tankModel.receiveResolutionResponse((NameResolutionResponse) msg.getPayload());
+					else if (msg.getPayload() instanceof LocationRequest)
+						tankModel.receiveLocationRequest((LocationRequest) msg.getPayload());
 
-				else if(msg.getPayload() instanceof LocationUpdate)
-					tankModel.locationUpdate((LocationUpdate)msg.getPayload(),msg.getSender());
+					else if (msg.getPayload() instanceof NameResolutionResponse)
+						tankModel.receiveResolutionResponse((NameResolutionResponse) msg.getPayload());
 
+					else if (msg.getPayload() instanceof LocationUpdate)
+						tankModel.locationUpdate((LocationUpdate) msg.getPayload(), msg.getSender());
 
+				}
 			}
 			System.out.println("Receiver stopped.");
 		}
