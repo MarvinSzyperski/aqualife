@@ -4,6 +4,7 @@ package aqua.blatt1.client;
 
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.rmi.RemoteException;
 
 public class ToggleController implements ActionListener {
 	private TankModel tankModel;
@@ -16,6 +17,10 @@ public class ToggleController implements ActionListener {
 
 	@Override
 	public void actionPerformed(ActionEvent e) {
-		tankModel.locateFishGlobally(fishId);
+		try {
+			tankModel.locateFishGlobally(fishId);
+		} catch (RemoteException remoteException) {
+			remoteException.printStackTrace();
+		}
 	}
 }

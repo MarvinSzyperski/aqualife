@@ -1,19 +1,20 @@
 package aqua.blatt1.common.msgtypes;
 
+import aqua.blatt1.client.AquaClient;
+
 import java.io.Serializable;
-import java.net.InetSocketAddress;
 
 public class NameResolutionResponse implements Serializable {
 
-	private InetSocketAddress address;
+	private AquaClient address;
 	private String requestID;
 
-	public NameResolutionResponse(InetSocketAddress address, String requestID) {
+	public NameResolutionResponse(AquaClient address, String requestID) {
 		this.address = address;
 		this.requestID = requestID;
 	}
 
-	public InetSocketAddress getAddress() {
+	public AquaClient getAddress() {
 		return address;
 	}
 

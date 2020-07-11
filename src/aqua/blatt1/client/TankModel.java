@@ -1,19 +1,19 @@
 package aqua.blatt1.client;
 
-import java.net.InetSocketAddress;
+import java.io.Serializable;
+import java.rmi.RemoteException;
 import java.util.*;
 import java.util.Timer;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 
+import aqua.blatt1.broker.AquaBroker;
 import aqua.blatt1.common.Direction;
 import aqua.blatt1.common.FishModel;
-import aqua.blatt1.common.Position;
 import aqua.blatt1.common.msgtypes.*;
+import messaging.Message;
 
-import javax.swing.*;
-
-public class TankModel extends Observable implements Iterable<FishModel> {
+public class TankModel extends Observable implements Iterable<FishModel>,AquaClient, Serializable {
 
 	public static final int WIDTH = 600;
 	public static final int HEIGHT = 350;
@@ -22,20 +22,20 @@ public class TankModel extends Observable implements Iterable<FishModel> {
 	protected volatile String id;
 	protected final Set<FishModel> fishies;
 	protected int fishCounter = 0;
-	protected final ClientCommunicator.ClientForwarder forwarder;
-	protected InetSocketAddress leftNeighbor;
-	protected InetSocketAddress rightNeighbor;
+	protected final AquaBroker broker;
+	protected AquaClient leftNeighbor;
+	protected AquaClient rightNeighbor;
 	private boolean token;
 	protected Timer timer;
-	private Map<String, InetSocketAddress> fishMap = new HashMap<>();
+	private Map<String, AquaClient> fishMap = new HashMap<>();
 
 
-	public TankModel(ClientCommunicator.ClientForwarder forwarder) {
+	public TankModel(AquaBroker broker) {
 		this.fishies = Collections.newSetFromMap(new ConcurrentHashMap<FishModel, Boolean>());
-		this.forwarder = forwarder;
+		this.broker = broker;
 	}
 
-	synchronized void onRegistration(String id) {
+	public synchronized void onRegistration(String id) {
 		this.id = id;
 		newFish(WIDTH - FishModel.getXSize(), rand.nextInt(HEIGHT - FishModel.getYSize()));
 	}
@@ -49,42 +49,42 @@ public class TankModel extends Observable implements Iterable<FishModel> {
 					rand.nextBoolean() ? Direction.LEFT : Direction.RIGHT);
 
 			fishies.add(fish);
-			fishMap.put(fish.getId(),null);
+			fishMap.put(fish.getId(),this);
 
 
 		}
 	}
 
-	synchronized void receiveFish(FishModel fish) {
+	public synchronized void receiveFish(FishModel fish) throws RemoteException {
 		fish.setToStart();
 		fishies.add(fish);
 		if(fishMap.containsKey(fish.getId())){
 			fishMap.put(fish.getId(),null);
 		}else{
-			forwarder.nameRequest(fish.getTankId(),fish.getId());
+			broker.respondResolutionRequest(this,fish);
+					//new Message(new NameResolutionRequest(fish.getTankId(),fish.getId()),null));
 		}
 
 	}
 
-	synchronized void receiveNeighbor(NeighborUpdate n) {
-		this.leftNeighbor = n.getLeft();
-		this.rightNeighbor = n.getRight();
+	public synchronized void receiveNeighbor(AquaClient l, AquaClient r) {
+		this.leftNeighbor = r;
+		this.rightNeighbor = l;
 	}
 
-	synchronized void receiveNeighbor(InetSocketAddress l, InetSocketAddress r){
 
-		this.leftNeighbor = l;
-		this.rightNeighbor = r;
-	}
-
-	synchronized void receiveToken(Token tk){
+	public synchronized void receiveToken(Token tk){
 		this.token = true;
 		timer = new Timer();
 		timer.schedule(new TimerTask() {
 			@Override
 			public void run() {
 				token = false;
-				forwarder.sendToken(leftNeighbor, tk);
+				try {
+					leftNeighbor.receiveToken(tk);
+				} catch (RemoteException e) {
+					e.printStackTrace();
+				}
 			}
 		},2000);
 	}
@@ -104,7 +104,7 @@ public class TankModel extends Observable implements Iterable<FishModel> {
 		return fishies.iterator();
 	}
 
-	private synchronized void updateFishies() {
+	private synchronized void updateFishies() throws RemoteException {
 		for (Iterator<FishModel> it = iterator(); it.hasNext();) {
 			FishModel fish = it.next();
 
@@ -116,10 +116,10 @@ public class TankModel extends Observable implements Iterable<FishModel> {
 				if (fish.hitsEdge()) {
 					if (!token) fish.reverse();
 					else if (fish.getDirection().equals(Direction.LEFT)) {
-						forwarder.handOff(fish, leftNeighbor);
+						leftNeighbor.receiveFish(fish);
 
 					} else {
-						forwarder.handOff(fish, rightNeighbor);
+						rightNeighbor.receiveFish(fish);
 					}
 				}
 
@@ -131,12 +131,12 @@ public class TankModel extends Observable implements Iterable<FishModel> {
 	}
 
 
-	public void locateFishGlobally(String fishID) {
+	public void locateFishGlobally(String fishID) throws RemoteException {
 		System.out.println("Looking for fish "+fishID);
 		if(fishMap.get(fishID) == null){
 			locateFishLocally(fishID);
 		}else{
-			forwarder.findFish(fishID,fishMap.get(fishID));
+			fishMap.get(fishID).locateFishGlobally(fishID);
 		}
 
 	}
@@ -150,31 +150,31 @@ public class TankModel extends Observable implements Iterable<FishModel> {
 
 	}
 
-	public void receiveLocationRequest(LocationRequest payload) {
+	public void receiveLocationRequest(LocationRequest payload) throws RemoteException {
 
 	locateFishGlobally(payload.getFishId());
 
 	}
 
-	public void receiveResolutionResponse(NameResolutionResponse payload){
-		forwarder.locationUpdate(payload.getAddress(),payload.getRequestID());
+	public void receiveResolutionResponse(NameResolutionResponse payload) throws RemoteException {
+		payload.getAddress().locationUpdate(payload.getRequestID(),payload.getAddress());
 	}
 
-	public void locationUpdate(LocationUpdate payload, InetSocketAddress newLoc) {
+	public void locationUpdate(String fishID, AquaClient newLoc) {
 
-		fishMap.put(payload.getFishID(),newLoc);
+		fishMap.put(fishID,newLoc);
 
 	}
 
 
-	private synchronized void update() {
+	private synchronized void update() throws RemoteException {
 		updateFishies();
 		setChanged();
 		notifyObservers();
 	}
 
-	protected void run() {
-		forwarder.register();
+	protected void run() throws RemoteException {
+		broker.register(this);
 
 		try {
 			while (!Thread.currentThread().isInterrupted()) {
@@ -186,8 +186,8 @@ public class TankModel extends Observable implements Iterable<FishModel> {
 		}
 	}
 
-	public synchronized void finish() {
-		forwarder.deregister(id);
+	public synchronized void finish() throws RemoteException {
+		broker.deregister(this);
 	}
 
 }
