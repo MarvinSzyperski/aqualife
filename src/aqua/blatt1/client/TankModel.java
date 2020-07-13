@@ -2,6 +2,7 @@ package aqua.blatt1.client;
 
 import java.io.Serializable;
 import java.rmi.RemoteException;
+import java.rmi.server.UnicastRemoteObject;
 import java.util.*;
 import java.util.Timer;
 import java.util.concurrent.ConcurrentHashMap;
@@ -11,9 +12,8 @@ import aqua.blatt1.broker.AquaBroker;
 import aqua.blatt1.common.Direction;
 import aqua.blatt1.common.FishModel;
 import aqua.blatt1.common.msgtypes.*;
-import messaging.Message;
 
-public class TankModel extends Observable implements Iterable<FishModel>,AquaClient, Serializable {
+public class TankModel extends Observable implements Iterable<FishModel>,AquaClient{
 
 	public static final int WIDTH = 600;
 	public static final int HEIGHT = 350;
@@ -28,19 +28,23 @@ public class TankModel extends Observable implements Iterable<FishModel>,AquaCli
 	private boolean token;
 	protected Timer timer;
 	private Map<String, AquaClient> fishMap = new HashMap<>();
+	public AquaClient client;
 
 
-	public TankModel(AquaBroker broker) {
+	public TankModel(AquaBroker broker) throws RemoteException {
 		this.fishies = Collections.newSetFromMap(new ConcurrentHashMap<FishModel, Boolean>());
 		this.broker = broker;
+
+		this.client = (AquaClient) UnicastRemoteObject.exportObject(this,0);
+
 	}
 
-	public synchronized void onRegistration(String id) {
+	public void onRegistration(String id) {
 		this.id = id;
 		newFish(WIDTH - FishModel.getXSize(), rand.nextInt(HEIGHT - FishModel.getYSize()));
 	}
 
-	public synchronized void newFish(int x, int y) {
+	public void newFish(int x, int y) {
 		if (fishies.size() < MAX_FISHIES) {
 			x = Math.min(x, WIDTH - FishModel.getXSize() - 1);
 			y = Math.min(y, HEIGHT - FishModel.getYSize());
@@ -55,7 +59,7 @@ public class TankModel extends Observable implements Iterable<FishModel>,AquaCli
 		}
 	}
 
-	public synchronized void receiveFish(FishModel fish) throws RemoteException {
+	public void receiveFish(FishModel fish) throws RemoteException {
 		fish.setToStart();
 		fishies.add(fish);
 		if(fishMap.containsKey(fish.getId())){
@@ -67,13 +71,13 @@ public class TankModel extends Observable implements Iterable<FishModel>,AquaCli
 
 	}
 
-	public synchronized void receiveNeighbor(AquaClient l, AquaClient r) {
+	public void receiveNeighbor(AquaClient l, AquaClient r) {
 		this.leftNeighbor = r;
 		this.rightNeighbor = l;
 	}
 
 
-	public synchronized void receiveToken(Token tk){
+	public void receiveToken(Token tk){
 		this.token = true;
 		timer = new Timer();
 		timer.schedule(new TimerTask() {
@@ -96,15 +100,15 @@ public class TankModel extends Observable implements Iterable<FishModel>,AquaCli
 
 	public boolean hasToken() { return token;}
 
-	public synchronized int getFishCounter() {
+	public int getFishCounter() {
 		return fishCounter;
 	}
 
-	public synchronized Iterator<FishModel> iterator() {
+	public Iterator<FishModel> iterator() {
 		return fishies.iterator();
 	}
 
-	private synchronized void updateFishies() throws RemoteException {
+	private void updateFishies() throws RemoteException {
 		for (Iterator<FishModel> it = iterator(); it.hasNext();) {
 			FishModel fish = it.next();
 
@@ -167,14 +171,14 @@ public class TankModel extends Observable implements Iterable<FishModel>,AquaCli
 	}
 
 
-	private synchronized void update() throws RemoteException {
+	private void update() throws RemoteException {
 		updateFishies();
 		setChanged();
 		notifyObservers();
 	}
 
 	protected void run() throws RemoteException {
-		broker.register(this);
+		broker.register(this.client);
 
 		try {
 			while (!Thread.currentThread().isInterrupted()) {
@@ -186,7 +190,7 @@ public class TankModel extends Observable implements Iterable<FishModel>,AquaCli
 		}
 	}
 
-	public synchronized void finish() throws RemoteException {
+	public void finish() throws RemoteException {
 		broker.deregister(this);
 	}
 
